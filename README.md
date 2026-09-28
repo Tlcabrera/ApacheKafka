@@ -33,17 +33,6 @@ Durante el curso se estudiarán los fundamentos de los sistemas distribuidos ori
 
 Los enlaces específicos y materiales complementarios podrán agregarse progresivamente durante el curso.
 
-👩‍💻 Docente
-Ingeniera Tatiana Cabrera
-
-Curso: Apache Kafka
-Universidad Javeriana
-
-Área: Ingeniería de Software / Datos / Sistemas Distribuidos
-
-"La mejor manera de aprender una tecnología distribuida es entender qué ocurre detrás de cada evento."
-
-
 📄 Licencia
 
 Este proyecto se distribuye bajo la licencia MIT.
