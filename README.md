@@ -14,6 +14,11 @@ Este repositorio contiene el material académico, laboratorios, ejemplos, ejerci
 
 Durante el curso se estudiarán los fundamentos de los sistemas distribuidos orientados a eventos y se desarrollarán aplicaciones prácticas utilizando el ecosistema de Kafka.
 
+## Indice Repositorio
+
+[Lab01](./Lab01/)
+[Material](./Material/)
+
 ## 📖 Recursos
 
 ### 📚 Documentación oficial
