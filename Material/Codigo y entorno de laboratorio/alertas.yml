@@ -1,0 +1,44 @@
+# Reglas de alerta del Laboratorio 11 / Taller 04 (sesión 14 y 15)
+# Pocas, accionables, cada una con umbral, duración y referencia al runbook.
+groups:
+  - name: kafka-salud
+    rules:
+      - alert: ParticionesSubReplicadas
+        expr: sum(kafka_server_replicamanager_underreplicatedpartitions) > 0
+        for: 5m
+        labels: {severity: alta}
+        annotations:
+          resumen: "Hay {{ $value }} particiones sub-replicadas"
+          accion: "Runbook 1: revisar brokers caídos, espacio en disco y saturación de red"
+
+      - alert: ParticionesFueraDeLinea
+        expr: sum(kafka_controller_kafkacontroller_offlinepartitionscount) > 0
+        for: 1m
+        labels: {severity: critica}
+        annotations:
+          resumen: "Particiones fuera de línea: pérdida de disponibilidad"
+          accion: "Runbook 2: escalamiento inmediato al responsable de plataforma"
+
+      - alert: ControladorAnomalo
+        expr: sum(kafka_controller_kafkacontroller_activecontrollercount) != 1
+        for: 2m
+        labels: {severity: critica}
+        annotations:
+          resumen: "ActiveControllerCount = {{ $value }} (debe ser 1)"
+          accion: "Revisar el quórum KRaft: kafka-metadata-quorum describe --status"
+
+      - alert: LagElevado
+        expr: sum by (consumergroup, topic) (kafka_consumergroup_lag) > 100000
+        for: 15m
+        labels: {severity: media}
+        annotations:
+          resumen: "Lag de {{ $labels.consumergroup }} en {{ $labels.topic }}: {{ $value }}"
+          accion: "Runbook 3: revisar el consumidor; escalar instancias hasta el número de particiones"
+
+      - alert: BrokerSinMetricas
+        expr: up{job="kafka-brokers"} == 0
+        for: 1m
+        labels: {severity: alta}
+        annotations:
+          resumen: "El exporter JMX de {{ $labels.instance }} no responde"
+          accion: "Runbook 4: revisar el proceso del broker, KAFKA_OPTS y la exposición del puerto 9101-9103"

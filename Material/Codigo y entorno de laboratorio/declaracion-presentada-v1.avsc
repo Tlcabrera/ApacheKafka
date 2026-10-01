@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "DeclaracionPresentada",
+  "namespace": "gov.dian.tributaria",
+  "doc": "Evento emitido cuando un contribuyente presenta una declaración. Datos sintéticos para formación.",
+  "fields": [
+    {"name": "id_evento", "type": "string", "doc": "Identificador único del evento (UUID). Clave de idempotencia en los consumidores."},
+    {"name": "nit", "type": "string", "doc": "NIT del declarante, sin dígito de verificación. Clave de partición: conserva el orden por contribuyente."},
+    {"name": "formulario", "type": "string", "doc": "Código del formulario presentado (110, 300, 350, 490)."},
+    {"name": "periodo", "type": "string", "doc": "Periodo gravable en formato AAAA-MM."},
+    {"name": "fecha_presentacion", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Momento de la presentación, en UTC."},
+    {"name": "valor_pagado", "type": {"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 2}, "doc": "Valor pagado en pesos colombianos."},
+    {"name": "estado", "type": {"type": "enum", "name": "EstadoDeclaracion", "symbols": ["PRESENTADA", "ANULADA", "CORREGIDA"]}, "doc": "Estado de la declaración al momento del evento."}
+  ]
+}

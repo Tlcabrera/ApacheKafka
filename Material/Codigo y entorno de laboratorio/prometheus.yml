@@ -1,0 +1,20 @@
+# Configuración de Prometheus para el Laboratorio 11
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alertas.yml
+
+scrape_configs:
+  # Métricas JMX de los brokers (requiere el agente jmx_prometheus_javaagent en KAFKA_OPTS)
+  - job_name: kafka-brokers
+    static_configs:
+      - targets: ["broker1:9101", "broker2:9102", "broker3:9103"]
+        labels: {cluster: dian-lab}
+
+  # Consumer lag medido desde fuera de las aplicaciones
+  - job_name: kafka-lag
+    static_configs:
+      - targets: ["kafka-exporter:9308"]
+        labels: {cluster: dian-lab}

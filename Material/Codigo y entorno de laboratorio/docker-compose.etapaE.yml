@@ -1,0 +1,139 @@
+# =============================================================================
+# Etapa E — Seguridad: TLS + SASL/SCRAM + autorizador (Laboratorios 12 y 13)
+#
+# Uso:
+#   1) ./gen-certs.sh ./secrets            # CA, keystores y truststore
+#   2) ./gen-client-configs.sh ./secrets   # archivos .properties de los clientes
+#   3) docker compose -f docker-compose.etapaE.yml up -d
+#
+# NOTA IMPORTANTE SOBRE EL ARRANQUE (el "problema del huevo y la gallina"):
+# Con SASL/SCRAM y KRaft las credenciales para comunicación interna deben existir
+# ANTES del primer arranque. gen-certs.sh crea scram-credentials.env una sola vez;
+# los tres brokers lo usan al formatear sus volúmenes propios (data1e, data2e...).
+# Esta etapa es aislada: no se combina con docker-compose-lab-kafka.yml.
+# =============================================================================
+
+x-broker-e: &broker-e
+  image: apache/kafka:3.9.0
+  volumes:
+    - ./secrets:/etc/kafka/secrets:ro
+  healthcheck:
+    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server $$(hostname):19092 --command-config /etc/kafka/secrets/admin.properties > /dev/null 2>&1"]
+    interval: 15s
+    timeout: 10s
+    retries: 12
+  environment: &env-e
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker1:9093,2@broker2:9093,3@broker3:9093
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+    # --- Las tres capas: cifrado, autenticación, autorización ---------------
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:SASL_SSL,INTERNAL:SASL_SSL,EXTERNAL:SASL_SSL
+    KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+    KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+    KAFKA_SASL_MECHANISM_CONTROLLER_PROTOCOL: SCRAM-SHA-512
+    KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/broker_jaas.conf
+
+    # El script oficial de la imagen resuelve las rutas y contraseñas desde secrets/.
+    KAFKA_SSL_KEYSTORE_TYPE: JKS
+    KAFKA_SSL_TRUSTSTORE_TYPE: JKS
+    KAFKA_SSL_TRUSTSTORE_FILENAME: truststore.jks
+    KAFKA_SSL_TRUSTSTORE_CREDENTIALS: creds
+    KAFKA_SSL_KEYSTORE_CREDENTIALS: creds
+    KAFKA_SSL_KEY_CREDENTIALS: creds
+    KAFKA_SSL_CLIENT_AUTH: none          # mTLS opcional; aquí la identidad la da SASL
+
+    # --- Autorización (Laboratorio 13) --------------------------------------
+    KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+    KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+    KAFKA_SUPER_USERS: User:admin-kafka
+
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_MIN_INSYNC_REPLICAS: 2
+    KAFKA_NUM_PARTITIONS: 6
+    KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    KAFKA_LOG_DIRS: /var/lib/kafka/data
+    CLUSTER_ID: dian-kafka-seg-2026
+
+services:
+  broker1:
+    <<: *broker-e
+    container_name: broker1
+    ports: ["9093:9095"]
+    environment:
+      <<: *env-e
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9095,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker1:19092,EXTERNAL://localhost:9093
+      KAFKA_SSL_KEYSTORE_FILENAME: broker1.keystore.jks
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - data1e:/var/lib/kafka/data
+    command: &fmt
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        # Siembra las credenciales SCRAM al formatear con la misma metadata
+        # inicial en cada nodo. El formato necesita una configuración KRaft real,
+        # no el server.properties genérico de la imagen.
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          cat > /tmp/format.properties <<EOF
+          process.roles=$$KAFKA_PROCESS_ROLES
+          node.id=$$KAFKA_NODE_ID
+          controller.quorum.voters=$$KAFKA_CONTROLLER_QUORUM_VOTERS
+          controller.listener.names=$$KAFKA_CONTROLLER_LISTENER_NAMES
+          listeners=$$KAFKA_LISTENERS
+          listener.security.protocol.map=$$KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          inter.broker.listener.name=$$KAFKA_INTER_BROKER_LISTENER_NAME
+          log.dirs=$$KAFKA_LOG_DIRS
+          EOF
+          . /etc/kafka/secrets/scram-credentials.env
+          /opt/kafka/bin/kafka-storage.sh format -t "$$CLUSTER_ID" \
+            -c /tmp/format.properties --ignore-formatted \
+            --add-scram "$$SCRAM_ADMIN_KAFKA" \
+            --add-scram "$$SCRAM_SVC_FACTURACION_PROD" \
+            --add-scram "$$SCRAM_SVC_ANALITICA_LECTURA"
+        fi
+        exec /etc/kafka/docker/run
+
+  broker2:
+    <<: *broker-e
+    container_name: broker2
+    ports: ["9094:9095"]
+    environment:
+      <<: *env-e
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9095,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker2:19092,EXTERNAL://localhost:9094
+      KAFKA_SSL_KEYSTORE_FILENAME: broker2.keystore.jks
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - data2e:/var/lib/kafka/data
+    command: *fmt
+
+  broker3:
+    <<: *broker-e
+    container_name: broker3
+    ports: ["9096:9095"]
+    environment:
+      <<: *env-e
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9095,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker3:19092,EXTERNAL://localhost:9096
+      KAFKA_SSL_KEYSTORE_FILENAME: broker3.keystore.jks
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - data3e:/var/lib/kafka/data
+    command: *fmt
+
+volumes:
+  data1e:
+  data2e:
+  data3e:

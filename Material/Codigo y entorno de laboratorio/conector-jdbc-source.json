@@ -1,0 +1,27 @@
+{
+  "name": "declaraciones-jdbc-source",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "tasks.max": "1",
+    "connection.url": "jdbc:postgresql://postgres:5432/dian",
+    "connection.user": "dian",
+    "connection.password": "dian",
+    "table.whitelist": "declaraciones",
+    "mode": "timestamp",
+    "timestamp.column.name": "actualizado_en",
+    "poll.interval.ms": "5000",
+    "topic.prefix": "jdbc.",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+
+    "transforms": "clave,extraer,mascara",
+    "transforms.clave.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.clave.fields": "nit",
+    "transforms.extraer.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.extraer.field": "nit",
+    "transforms.mascara.type": "org.apache.kafka.connect.transforms.MaskField$Value",
+    "transforms.mascara.fields": "nit",
+    "transforms.mascara.replacement": "SEUDONIMIZADO"
+  }
+}

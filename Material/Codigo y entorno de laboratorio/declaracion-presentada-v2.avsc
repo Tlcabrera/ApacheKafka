@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "DeclaracionPresentada",
+  "namespace": "gov.dian.tributaria",
+  "doc": "v2 (Taller 03): agrega canal_presentacion y el nuevo nombre del valor. Compatible BACKWARD: ambos campos nuevos llevan valor por defecto.",
+  "fields": [
+    {"name": "id_evento", "type": "string", "doc": "Identificador único del evento (UUID)."},
+    {"name": "nit", "type": "string", "doc": "NIT del declarante, sin dígito de verificación."},
+    {"name": "formulario", "type": "string", "doc": "Código del formulario presentado."},
+    {"name": "periodo", "type": "string", "doc": "Periodo gravable en formato AAAA-MM."},
+    {"name": "fecha_presentacion", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Momento de la presentación, en UTC."},
+    {"name": "valor_pagado", "type": ["null", {"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 2}], "default": null, "doc": "OBSOLETO desde v2. Se retira en v3 tras el periodo de gracia de 90 días. Use valor_total_pagado."},
+    {"name": "valor_total_pagado", "type": ["null", {"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 2}], "default": null, "doc": "Valor pagado en pesos colombianos. Reemplaza a valor_pagado; durante la transición ambos se publican con el mismo valor."},
+    {"name": "estado", "type": {"type": "enum", "name": "EstadoDeclaracion", "symbols": ["PRESENTADA", "ANULADA", "CORREGIDA"]}, "doc": "Estado de la declaración."},
+    {"name": "canal_presentacion", "type": ["null", "string"], "default": null, "doc": "Canal por el que se presentó (WEB, PRESENCIAL, API). Nulo en eventos anteriores a v2."}
+  ]
+}

@@ -1,0 +1,14 @@
+# Etapa B del entorno: añade PostgreSQL para los laboratorios 06 y 07.
+# Copiar junto al docker-compose.yml del curso; docker compose lo fusiona automáticamente.
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_DB: dian
+      POSTGRES_USER: dian
+      POSTGRES_PASSWORD: dian
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+volumes:
+  pgdata:
