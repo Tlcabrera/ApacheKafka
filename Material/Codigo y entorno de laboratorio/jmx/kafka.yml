@@ -1,0 +1,31 @@
+
+---
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  - pattern: "kafka.server<type=(.+), name=(.+)><>Value"
+    name: kafka_server_$1_$2
+    type: GAUGE
+
+  - pattern: "kafka.server<type=(.+), name=(.+), topic=(.+)><>Value"
+    name: kafka_server_$1_$2
+    labels:
+      topic: "$3"
+    type: GAUGE
+
+  - pattern: "kafka.network<type=(.+), name=(.+)><>Value"
+    name: kafka_network_$1_$2
+    type: GAUGE
+
+  - pattern: "kafka.log<type=(.+), name=(.+)><>Value"
+    name: kafka_log_$1_$2
+    type: GAUGE
+
+  - pattern: "kafka.controller<type=(.+), name=(.+)><>Value"
+    name: kafka_controller_$1_$2
+    type: GAUGE
+
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>(used|committed|max)"
+    name: jvm_memory_heap_$1_bytes
+    type: GAUGE
